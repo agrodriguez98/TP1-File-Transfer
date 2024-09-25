@@ -39,11 +39,11 @@ def send_close(clientSocket, serverAddress, p):
 	print('Ending doubtfully')
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
-clientSocket.settimeout(1);
+clientSocket.settimeout(1)
 p = 0
 data = p.to_bytes(1, 'big') + 'FILE'.encode() + filename.encode()
 serverAddress, p = send_data(clientSocket, (SERVER_HOST, SERVER_PORT), data, p)
-with open('files/' + filename, 'rb') as file:
+with open('/home/smarczewski/Documents/TP1-File-Transfer/src/files/' + filename, 'rb') as file:
 	bytesRead = file.read(BUFFER_SIZE)
 	while bytesRead:
 		data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
