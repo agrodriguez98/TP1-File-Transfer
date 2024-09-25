@@ -1,2 +1,3 @@
 src/files
 src/server_storage
+src/lib/__pycache__
