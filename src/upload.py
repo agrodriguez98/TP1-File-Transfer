@@ -1,17 +1,20 @@
 from socket import *
+from sys import argv
+from time import sleep
 
 SERVER_HOST = 'localhost'
 SERVER_PORT = 12000
 
 BUFFER_SIZE = 4096
 
-filename = 'AUTH.png'
+filename = argv[1]
 
 def send_data(clientSocket, serverAddress, data, p):
 	clientSocket.sendto(data, serverAddress)
 	print('Sent P', p)
 	while True:
 		try:
+			#sleep(0.2) #Para probarlo con distintos clientes en simultaneo
 			receivedData, address = clientSocket.recvfrom(BUFFER_SIZE)
 			i = int.from_bytes(receivedData[:1], 'big')
 			print(receivedData[1:].decode() + ' ' + str(i))
@@ -43,10 +46,10 @@ clientSocket.settimeout(1)
 p = 0
 data = p.to_bytes(1, 'big') + 'FILE'.encode() + filename.encode()
 serverAddress, p = send_data(clientSocket, (SERVER_HOST, SERVER_PORT), data, p)
-with open('/home/smarczewski/Documents/TP1-File-Transfer/src/files/' + filename, 'rb') as file:
+with open('files/' + filename, 'rb') as file:
 	bytesRead = file.read(BUFFER_SIZE)
 	while bytesRead:
-		data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
+		data = p.to_bytes(1, 'big') + 'DATA'.encode() + filename.encode() + bytesRead
 		serverAddress, p = send_data(clientSocket, serverAddress, data, p)
 		bytesRead = file.read(BUFFER_SIZE)
 

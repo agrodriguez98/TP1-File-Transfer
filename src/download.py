@@ -46,7 +46,7 @@ clientSocket.settimeout(1)
 counter = 0
 data = counter.to_bytes(1, 'big') + 'DOWN'.encode() + filename.encode()
 serverAddress, p = send_data(clientSocket, (SERVER_HOST, SERVER_PORT), data, counter)
-with open('/home/smarczewski/Documents/TP1-File-Transfer/src/files/' + filename, 'wb') as file:
+with open('files/' + filename, 'wb') as file:
     while (type != 'DONE'):
         payload, type, p, serverAddress = recv_data(clientSocket)
         send_ack(clientSocket, serverAddress, p)
