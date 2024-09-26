@@ -7,8 +7,10 @@ SERVER_PORT = 12000
 
 CLIENT_BUFFER_SIZE = 4096
 SERVER_BUFFER_SIZE = CLIENT_BUFFER_SIZE + 1 + 4 + 8
-# que es el 1 y 4 ?
-# arreglar esto
+# Esto tiene que estar igual que en donwload.py
+# Habria que unificarlo en un solo lugar
+
+# El tamaño de p creo que hay que agrandarlo para soportar archivos mas grandes
 
 def send_data(serverSocket, clientAddress, data, p):
 	serverSocket.sendto(data, clientAddress)
@@ -72,38 +74,51 @@ def handle_upload(server_socket, client_address, filename, payload, p):
     # Enviar ACK al cliente para confirmar recepción
 	send_ack(server_socket, client_address, p)
 
-def download(serverSocket, clientAddress, filename, type):
+def handle_download(serverSocket, clientAddress, filename, p, offset):
+	done = False
 	path = 'server_storage/' + filename
-	p = 0
 	with open(path, 'rb') as file:
+		file.seek(offset)
 		bytesRead = file.read(CLIENT_BUFFER_SIZE)
-		while bytesRead:
-			data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
-			clientAddress, p = send_data(serverSocket, clientAddress, data, p)
-			bytesRead = file.read(CLIENT_BUFFER_SIZE)
-	send_close(serverSocket, clientAddress, p)
+		if bytesRead:
+			data = p.to_bytes(1, 'big') + 'DATA'.encode() + filename.encode() + bytesRead
+			serverSocket.sendto(data, client_address)
+			print(f"Enviado fragmento desde offset {offset} al cliente {client_address}, p: {p}")
+			p += 1
+			offset = offset + len(bytesRead)
+		else:
+			print(f"El archivo {filename} fue completamente enviado.")
+			data = p.to_bytes(1, 'big') + 'DONE'.encode() + filename.encode()
+			serverSocket.sendto(data, clientAddress)
+			done = True
+		return offset, p, done
 
 
 def parse_data(data):
 	p = 0
 	p = int.from_bytes(data[:1], 'big')
 	type = data[1:5].decode()
+	if (type == 'ACK1'):
+		return None, None, 'ACK1', p
 	filename = data[5:13].decode()
 	print('Received P - ', p, type, filename)
 	payload = None
 	if (type == 'DATA'):
 		payload = data[13:]
 	return payload, filename, type, p
-	
-
 
 # Función que maneja cada cliente de manera concurrente
 def handle_client(client_address, server_socket):
+    # Se podría identificar en el primer mensaje el servicio que se va a utilizar
+	# si es upload o download. Asi se define el comportamiento con ese cliente,
+	# que no va a cambiar hasta que se cierre la conexion y el thread
     print(f"[INFO] Iniciando manejo para el cliente: {client_address}")
     i=1
+    offset = 0
+    last_p_sent = 0
+    done = False
     while True:
         try:
-            print("aca {}",i)
             data = clients[client_address]["data_queue"].get(timeout=1)
 
             # Aquí se procesaría el paquete y se manejaría la lógica de Upload o Download
@@ -111,12 +126,19 @@ def handle_client(client_address, server_socket):
             
             if msg_type == 'FILE' or msg_type == 'DATA':
                 handle_upload(server_socket, client_address, filename, payload, p)
-            elif msg_type == 'DOWNLOAD':
-                handle_download(server_socket, client_address, payload, p)
+            elif msg_type == 'DOWN':
+                file_name = filename # medio hardcodeado pero es para poder responder el ACK
+                offset, last_p_sent, done = handle_download(server_socket, client_address, filename, last_p_sent, offset)
             elif msg_type == 'DONE':
+				# este done se recibe cuando se termina el upload
                 print(f"[INFO] Cliente {client_address} ha terminado la transferencia.")
                 send_ack(server_socket, client_address, p)
                 break
+            elif msg_type == 'ACK1': #esta puesto como ACK1 porque esta hardcodeado la cant de bytes
+                if done:
+                    break
+                offset, last_p_sent, done = handle_download(server_socket, client_address, file_name, last_p_sent, offset)
+
         except queue.Empty:
             continue
         except Exception as e:
