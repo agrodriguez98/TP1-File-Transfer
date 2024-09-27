@@ -51,12 +51,14 @@ def parse_data(data):
 	if (type == 'ACK1'):
 		return None, None, 'ACK1', p
 	filename = None
-	print('Received P - ', p, type, filename)
 	payload = None
 	if (type == 'DATA'):
-		payload = data[13:]
+		payload = data[5:]
+		print('Received P - '+ str(p) +' - ' + type + ' - size: ' + str(len(payload)))
+
 	if type == 'FILE' or type == 'DOWN':
 		filename = data[5:].decode()
+		print('Received P - ', p, type, filename)
 	return payload, filename, type, p
 
 # Función que maneja cada cliente de manera concurrente

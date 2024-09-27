@@ -34,7 +34,7 @@ def send_file(clientSocket, serverAddress, SOURCE_FILEPATH, p):
 		bytesRead = file.read(SENDER_BUFFER_SIZE)
 		while bytesRead:
 			# hardcodeo filename para rellenar los 8 bytes, capaz no hace falta y se puede sacar
-			data = p.to_bytes(1, 'big') + 'DATA'.encode() + 'FILENAME'.encode() + bytesRead
+			data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
 			serverAddress, p = send_data(clientSocket, serverAddress, data, p)
 			bytesRead = file.read(SENDER_BUFFER_SIZE)
 
@@ -73,8 +73,6 @@ def recv_data(clientSocket):
 	p = int.from_bytes(data[:1], 'big')
 	print('Received P', p)
 	type = data[1:5].decode()
-	filename = data[5:13].decode()
-	# aca no hace falta usar el filename
 	payload = None
 	if (type == 'DATA'):
 		payload = data[13:]
