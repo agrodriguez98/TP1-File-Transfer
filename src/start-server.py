@@ -31,14 +31,14 @@ def handle_download(serverSocket, clientAddress, filename, p, offset):
 		file.seek(offset)
 		bytesRead = file.read(SENDER_BUFFER_SIZE)
 		if bytesRead:
-			data = p.to_bytes(1, 'big') + 'DATA'.encode() + filename.encode() + bytesRead
+			data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
 			serverSocket.sendto(data, client_address)
 			print(f"Enviado fragmento desde offset {offset} al cliente {client_address}, p: {p}")
 			p += 1
 			offset = offset + len(bytesRead)
 		else:
 			print(f"El archivo {filename} fue completamente enviado.")
-			data = p.to_bytes(1, 'big') + 'DONE'.encode() + filename.encode()
+			data = p.to_bytes(1, 'big') + 'DONE'.encode()
 			serverSocket.sendto(data, clientAddress)
 			done = True
 		return offset, p, done
