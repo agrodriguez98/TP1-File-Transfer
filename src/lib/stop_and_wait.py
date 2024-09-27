@@ -54,8 +54,6 @@ def send_close(clientSocket, serverAddress, p):
 			tries += 1
 	print('Ending doubtfully')
 	
-
-	
 #
 # Receiver role
 #
@@ -63,8 +61,8 @@ def send_close(clientSocket, serverAddress, p):
 # en este caso creo que no hace falta recibir un ack despues del DOWN
 # directamente se puede recibir el archivo
 def send_file_request(clientSocket, serverAddress, filename, p):
-	
-	data = p.to_bytes(1, 'big') + 'DOWN'.encode() + filename.encode()
+	filename_len = len(filename).to_bytes(1, 'big')
+	data = p.to_bytes(1, 'big') + 'DOWN'.encode() + filename_len + filename.encode()
 	clientSocket.sendto(data, serverAddress)
 	print('Sent P', p)
 
@@ -75,7 +73,7 @@ def recv_data(clientSocket):
 	type = data[1:5].decode()
 	payload = None
 	if (type == 'DATA'):
-		payload = data[13:]
+		payload = data[5:]
 	return payload, type, p
 
 def send_ack(clientSocket, serverAddress, p):

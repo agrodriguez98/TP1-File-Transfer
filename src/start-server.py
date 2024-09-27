@@ -57,7 +57,8 @@ def parse_data(data):
 		print('Received P - '+ str(p) +' - ' + type + ' - size: ' + str(len(payload)))
 
 	if type == 'FILE' or type == 'DOWN':
-		filename = data[5:].decode()
+		filename_len = int.from_bytes(data[5:6], 'big')
+		filename = data[6 : 6 + filename_len].decode()
 		print('Received P - ', p, type, filename)
 	return payload, filename, type, p
 
