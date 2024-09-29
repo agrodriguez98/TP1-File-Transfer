@@ -12,6 +12,7 @@ def handle_connection(filename, type, p, clientAddress):
 
 	send_ack(newServerSocket, clientAddress, p)
 	if (type == 'DOWN'):
+		newServerSocket.settimeout(1)
 		send_file(newServerSocket, clientAddress, filepath, p+1)
 	elif (type == 'FILE'):
 		recv_file(newServerSocket, clientAddress, filepath, type)
@@ -28,6 +29,3 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 		print('Listening for clients')
 		filename, type, p, clientAddress = recv_data(serverSocket)
 		pool.submit(handle_connection, filename, type, p, clientAddress)
-		
-
-
