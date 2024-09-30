@@ -1,4 +1,4 @@
-from lib.stop_and_wait import *
+from lib.selective_repeat import *
 from cli import *
 
 FILENAME = 'JWT.png'

@@ -1,7 +1,7 @@
-from lib.stop_and_wait import *
+from lib.selective_repeat import *
 from cli import *
 
-FILENAME = 'AUTH.png'
+FILENAME = 'cheems.png'
 
 argsparser = get_argparser(App.CLIENT_UPLOAD)
 args = get_args(argsparser, App.CLIENT_UPLOAD)

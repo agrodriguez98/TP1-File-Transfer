@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from lib.stop_and_wait import *
+from lib.selective_repeat import *
 from cli import *
 
 N_THREADS = 10
@@ -29,5 +29,3 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 		filename, type, p, clientAddress = recv_data(serverSocket)
 		pool.submit(handle_connection, filename, type, p, clientAddress)
 		
-
-
