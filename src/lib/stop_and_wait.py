@@ -8,6 +8,8 @@ TYPE_BYTES = 4
 
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 
+SENDER_TIMEOUT = 0.09
+
 #
 # Sender role
 #
@@ -74,13 +76,18 @@ def send_ack(receiverSocket, senderAddress, p):
 	receiverSocket.sendto(p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ACKN'.encode(), senderAddress)
 	print('Sent ACK', p)
 
-def recv_file(receiverSocket, senderAddress, filepath, type):
+def write_file(filepath, data):
+	with open(filepath, 'ab') as file:
+		file.write(data)
+
+def recv_file(receiverSocket, senderAddress, filepath):
 	counter = 0
-	with open(filepath, 'wb') as file:
-		while (type != 'DONE'):
-			payload, type, p, senderAddress = recv_data(receiverSocket)
-			send_ack(receiverSocket, senderAddress, p)
-			if (counter < p and type == 'DATA'):
-				file.write(payload)
-				counter += 1
+	payload, type, p, senderAddress = recv_data(receiverSocket)
+	send_ack(receiverSocket, senderAddress, p)
+	while (type != 'DONE'):
+		if (counter < p and type == 'DATA'):
+			write_file(filepath, payload)
+			counter += 1
+		payload, type, p, senderAddress = recv_data(receiverSocket)
+		send_ack(receiverSocket, senderAddress, p)
 	print('Done receiving')
