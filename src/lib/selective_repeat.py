@@ -4,21 +4,19 @@ import time
 import random
 random.seed() 
 
-SENDER_BUFFER_SIZE = 4096
+SENDER_BUFFER_SIZE = 1000
 PACKAGE_NUMBER_BYTES = 1
 TYPE_BYTES = 4
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKAGE_NUMBER_BYTES + TYPE_BYTES
 WINDOW_SIZE = 10
 
 TIMEOUT = 1
-PACKET_LOSS_PERCENTAGE = 0.1
+PACKET_LOSS_PERCENTAGE = 0
 
 #
 # Sender role
 #
 def send_file(senderSocket, receiverAddress, filepath, seq_number):
-
-	confirmados=[]
 	bool_window= [False]*WINDOW_SIZE
 
 	senderSocket.setblocking(False)
@@ -28,6 +26,10 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number):
 	bytesRead = file.read(SENDER_BUFFER_SIZE)
 	endparse = False
 	while bytesRead or len(window) > 0:
+
+		print(send_base)
+		array_numeros = [int(b) for b in bool_window]
+		print(array_numeros)
 		if seq_number < send_base + WINDOW_SIZE and bytesRead:
 			data = seq_number.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
 		
@@ -61,9 +63,6 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number):
 					receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
 				except BlockingIOError:
 					receivedData = None
-			print(send_base)
-			array_numeros = [int(b) for b in bool_window]
-			print(array_numeros)
 			"""
 			reenviar paquetes timeout:
 			"""
