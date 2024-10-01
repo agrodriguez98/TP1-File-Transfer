@@ -1,176 +1,156 @@
 from socket import *
 from datetime import datetime
+import time
+import random
+random.seed() 
 
 SENDER_BUFFER_SIZE = 4096
 PACKAGE_NUMBER_BYTES = 1
 TYPE_BYTES = 4
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKAGE_NUMBER_BYTES + TYPE_BYTES
 WINDOW_SIZE = 10
-TIMEOUT = 1000000 #microsegundos 
+
+TIMEOUT = 1
+PACKET_LOSS_PERCENTAGE = 0.1
 
 #
 # Sender role
 #
 def send_file(senderSocket, receiverAddress, filepath, seq_number):
-	"""
-	Declaro window[WINDOW_SIZE]
-	Divido archivo en datos_pendientes[]
-	Declaro send_base = 0
-	Declaro seq_number = 0
 
-	Por cada dato_pendiente:
-		if seq_number < send_base + WINDOW_SIZE:
-			Envio dato_pendiente
-			Pusheo (dato_pendiente, seq_number, timeout) en window
-			seq_number++
-		else:
-			while recibo akc:
-				if seq_number_ack == send_base:
-					window.pop(0)
-					send_base++
-			for pendiente in window:
-				if pendiente timeout:
-					pendiente send
-					pendiente timeout update
-	while window len > 0:
-		while recibo akc:
-			if seq_number_ack == send_base:
-				window.pop(0)
-				send_base++
-		for pendiente in window:
-			if pendiente timeout:
-				pendiente send
-				pendiente timeout update
-	"""
+	confirmados=[]
+	bool_window= [False]*WINDOW_SIZE
+
 	senderSocket.setblocking(False)
 	window = []
 	send_base = seq_number
 	file = open(filepath, 'rb')
 	bytesRead = file.read(SENDER_BUFFER_SIZE)
-	while bytesRead:
-		if seq_number < send_base + WINDOW_SIZE:
+	endparse = False
+	while bytesRead or len(window) > 0:
+		if seq_number < send_base + WINDOW_SIZE and bytesRead:
 			data = seq_number.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
-			senderSocket.sendto(data, receiverAddress)
-			print("enviado paquete"+str(seq_number))
-			dt = datetime.now()
-			window.append((bytesRead, seq_number, dt.microsecond + TIMEOUT))
+		
+			if random.random() > PACKET_LOSS_PERCENTAGE:
+				senderSocket.sendto(data, receiverAddress)
+			window.append((data, seq_number, time.time() + TIMEOUT))
 			seq_number += 1
-		else:
+			bytesRead = file.read(SENDER_BUFFER_SIZE)
+		else:			
+			"""
+			recibidor de acks:
+			"""
 			try:
 				receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
 			except BlockingIOError:
-				pass
+				receivedData = None
 			while receivedData:
 				seq_number_ack = int.from_bytes(receivedData[:1], 'big')
-				if seq_number_ack == send_base:
-					window.pop(0)
-					send_base += 1
+				i = 0
+				while i < len(window):
+					if window[i][1] == seq_number_ack:
+						window.pop(i)
+						bool_window[seq_number_ack-send_base] = True
+						while bool_window[0]==True: 
+							bool_window.pop(0)
+							send_base+=1
+							bool_window.append(False)
+					else:
+						i += 1
 				try:
 					receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
 				except BlockingIOError:
-					pass
-				
-			for pendiente in window:
-				dt = datetime.now()
-				if dt.microsecond > pendiente[2]:
-					data = seq_number.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
-					senderSocket.sendto(data, receiverAddress)
-					pendiente[2] = dt.microsecond
-		bytesRead = file.read(SENDER_BUFFER_SIZE)
-	while window.length > 0:
-		try:
-			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
-		except BlockingIOError:
-			pass
-		while receivedData:
-			seq_number_ack = int.from_bytes(receivedData[:1], 'big')
-			if seq_number_ack == send_base:
-				window.pop(0)
-				send_base += 1
-			try:
-				receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
-			except BlockingIOError:
-				pass
-			
-		for pendiente in window:
-			dt = datetime.now()
-			if dt.microsecond > pendiente[2]:
-				data = seq_number.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
+					receivedData = None
+			print(send_base)
+			array_numeros = [int(b) for b in bool_window]
+			print(array_numeros)
+			"""
+			reenviar paquetes timeout:
+			"""
+			for i in range(len(window)):
+				if time.time() > window[i][2]:
+					data = window[i][0]
+					if random.random() > PACKET_LOSS_PERCENTAGE:
+						senderSocket.sendto(data, receiverAddress)
+					window[i] = (window[i][0], window[i][1], time.time() + TIMEOUT)
+		"""
+		Si no hay más archivo para leer, aún no se envó el done y no quedan elementos en la ventana de envios, enviar DONE:
+		"""
+		if not(bytesRead) and not(endparse) and len(window)==0:
+			endparse = True
+			print("FIN PARSEO ARCHIVO")
+			type = 'DONE'
+			data = seq_number.to_bytes(1, 'big') + type.encode()
+			if random.random() > PACKET_LOSS_PERCENTAGE:
 				senderSocket.sendto(data, receiverAddress)
-				pendiente[2] = dt.microsecond
-
+			seq_number+=1
+			#window.append((data, seq_number, time.time() + TIMEOUT))
 
 #
 # Receiver role
 #
-def recv_file(receiverSocket, senderAddress, filepath, type):
-
-	"""
-	Declaro window[] = [None] * WINDOW_SIZE
-
-	Creo archivo
-	Declaro rcv_base = 0
-	
-	Hasta no recibir DONE, y rcv_base == DONE_seq_number:
-		leo data
-		if seq_number < rcv_base:
-			ack seq number
-		else if seq_number == rcv_base:
-			archivo write data
-			ack seq number
-			rcv_base ++
-			window.pop(0)
-			window.append(None)
-			while window[0]:
-				archivo write window[0]
-				window.pop(0)
-				window.append(None)
-		else if seq_number < rcv_base + WINDOW_SIZE:
-			while len(window) < WINDOW_SIZE:
-				window.append(None)
-			window[seq_number-rcv_base] = data
-			ack seq_number
-		else:
-			do nothing
-	"""
-	window = [None] * WINDOW_SIZE
+def recv_file(receiverSocket, senderAddress, filepath, type, seq_number):
+	window= [None]*WINDOW_SIZE
 	file = open(filepath, 'wb')
-	rcv_base = 1
+	rcv_base = seq_number
 	done_received = False
 	done_seq_number = 0
+
 	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
-	while data and done_received == False:
+	while True:
 		seq_number = int.from_bytes(data[:1], 'big')
 		type = data[1:5].decode()
-		print("recibido paquete"+str(seq_number))
 		if (type == 'DONE'):
-			done_received = True
+			
+			print("DONE")
 			done_seq_number = seq_number
+			done_received = True
+			print(rcv_base, done_seq_number)
+			
 			send_ack(receiverSocket, senderAddress, seq_number)
 		elif(type == 'DATA'):
 			payload = data[5:]
 			if seq_number < rcv_base:
 				send_ack(receiverSocket, senderAddress, seq_number)
-			elif seq_number == rcv_base:
-				file.write(payload)
-				send_ack(receiverSocket, senderAddress, seq_number)
-				rcv_base += 1
-				window.pop(0)
-				window.append(None)
-				while window[0]:
-					file.write(window[0])
-					window.pop(0)
-					window.append(None)
+				print("repeated")
+
 			elif seq_number < rcv_base + WINDOW_SIZE:
-				while len(window)<WINDOW_SIZE:
-					window.append(None)
-				window[seq_number-rcv_base] = data
 				send_ack(receiverSocket, senderAddress, seq_number)
-		data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
+				window[seq_number-rcv_base]=payload
+
+			else:
+				print("out of window")
+		else:
+			print("other type recibido")
+
+		while window[0]!=None: 
+			file.write(window.pop(0))
+			rcv_base+=1
+			window.append(None)
+
+		array_numeros = [1 if x is not None else 0 for x in window]
+		print(rcv_base)
+		print(array_numeros)
+
+		if done_received==True and done_seq_number == rcv_base:
+			break
+		else:
+			data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
+	file.close()
+	print("End receiving")
+
+
+
+
+
 
 
 def send_ack(receiverSocket, senderAddress, p):
-	receiverSocket.sendto(p.to_bytes(1, 'big') + 'ACK'.encode(), senderAddress)
+	if random.random() > PACKET_LOSS_PERCENTAGE:
+		receiverSocket.sendto(p.to_bytes(1, 'big') + 'ACK'.encode(), senderAddress)
+		print("ack sent: "+str(p))
+	else:
+		print("ack not sent: "+str(p))
 
 
 def send_data(senderSocket, receiverAddress, data, p):

@@ -12,9 +12,9 @@ def handle_connection(filename, type, p, clientAddress):
 
 	send_ack(newServerSocket, clientAddress, p)
 	if (type == 'DOWN'):
-		send_file(newServerSocket, clientAddress, filepath, p+1)
+		send_file(newServerSocket, clientAddress, filepath, 0)
 	elif (type == 'FILE'):
-		recv_file(newServerSocket, clientAddress, filepath, type)
+		recv_file(newServerSocket, clientAddress, filepath, type, 1)
 
 argsparser = get_argparser(App.SERVER)
 args = get_args(argsparser, App.SERVER)
