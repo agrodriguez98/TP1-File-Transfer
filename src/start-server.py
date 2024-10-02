@@ -14,16 +14,16 @@ def handle_connection(filename, type, p, clientAddress):
 	if (type == 'DOWN'):
 		newServerSocket.settimeout(SENDER_TIMEOUT)
 		# Stop and wait
-    # send_file(newServerSocket, clientAddress, filepath, p+1, args.verbose)
+    	# send_file(newServerSocket, clientAddress, filepath, p+1, args.verbose)
     
-    # Selective repeat
-    send_file(newServerSocket, clientAddress, filepath, 0)
+		# Selective repeat
+		send_file(newServerSocket, clientAddress, filepath, 0)
 	elif (type == 'FILE'):
-    # Stop and wait
+    	# Stop and wait
 		# recv_file(newServerSocket, clientAddress, filepath, args.verbose)
     
-    # Selective repeat
-    recv_file(newServerSocket, clientAddress, filepath, type, 1)
+		# Selective repeat
+		recv_file(newServerSocket, clientAddress, filepath, type, 1)
 
 argsparser = get_argparser(App.SERVER)
 args = get_args(argsparser, App.SERVER)
