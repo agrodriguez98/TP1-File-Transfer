@@ -61,6 +61,8 @@ def get_args(argparser, app):
     else:
         if not Path(args.dst).exists():
             argparser.exit(1, message="ERROR: The destination file path doesn't exist\n")
+        if Path(args.dst + args.name).exists():
+            argparser.exit(1, message=f"ERROR: A file named {args.name} already exists\n")
 
     return args
 

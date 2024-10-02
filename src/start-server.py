@@ -10,11 +10,20 @@ def handle_connection(filename, type, p, clientAddress):
 	newServerSocket = socket(AF_INET, SOCK_DGRAM)
 	newServerSocket.bind((args.host, 0))
 
-	send_ack(newServerSocket, clientAddress, p)
+	send_ack(newServerSocket, clientAddress, p, args.verbose)
 	if (type == 'DOWN'):
-		send_file(newServerSocket, clientAddress, filepath, 0)
+		newServerSocket.settimeout(SENDER_TIMEOUT)
+		# Stop and wait
+    # send_file(newServerSocket, clientAddress, filepath, p+1, args.verbose)
+    
+    # Selective repeat
+    send_file(newServerSocket, clientAddress, filepath, 0)
 	elif (type == 'FILE'):
-		recv_file(newServerSocket, clientAddress, filepath, type, 1)
+    # Stop and wait
+		# recv_file(newServerSocket, clientAddress, filepath, args.verbose)
+    
+    # Selective repeat
+    recv_file(newServerSocket, clientAddress, filepath, type, 1)
 
 argsparser = get_argparser(App.SERVER)
 args = get_args(argsparser, App.SERVER)
@@ -26,6 +35,5 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 
 	while True:
 		print('Listening for clients')
-		filename, type, p, clientAddress = recv_data(serverSocket)
+		filename, type, p, clientAddress = recv_data(serverSocket, args.verbose)
 		pool.submit(handle_connection, filename, type, p, clientAddress)
-		

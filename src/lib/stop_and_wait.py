@@ -1,84 +1,103 @@
 from socket import *
+from time import sleep
 
-SENDER_BUFFER_SIZE = 4096
+SENDER_BUFFER_SIZE = 8192
 
-PACKAGE_NUMBER_BYTES = 1
+PACKET_NUMBER_BYTES = 2
 
 TYPE_BYTES = 4
 
-RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKAGE_NUMBER_BYTES + TYPE_BYTES
+RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
+
+SENDER_TIMEOUT = 0.09
+
+def verbose_log(message, verbose):
+	if verbose:
+		print(message)
 
 #
 # Sender role
 #
-def send_data(senderSocket, receiverAddress, data, p):
+def send_data(senderSocket, receiverAddress, data, p, verbose):
+	sleep(0.10)
 	senderSocket.sendto(data, receiverAddress)
-	print('Sent P', p)
-	while True:
+	tries = 0
+	verbose_log(f'Sent packet {p}', verbose)
+	while tries < 10:
 		try:
 			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
-			i = int.from_bytes(receivedData[:1], 'big')
-			print(receivedData[1:].decode() + ' ' + str(i))
+			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
+			type = receivedData[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
+			if (type == 'ACKN'):
+				verbose_log(f'Received ACK' + ' ' + str(i), verbose)
 			p += 1
 			return (address, p)
 		except timeout:
-			print('Timeout ocurred sending packet', p)
+			tries += 1
+			verbose_log(f'Timeout ocurred sending packet {p}', verbose)
 			senderSocket.sendto(data, receiverAddress)
-			print('Resending P', p)
+			verbose_log(f'Resending packet {p}', verbose)
+	verbose_log(f'Ending doubtfully', verbose)
 
-def send_close(senderSocket, receiverAddress, p):
+def send_close(senderSocket, receiverAddress, p, verbose):
 	tries = 0
-	data = p.to_bytes(1, 'big') + 'DONE'.encode()
+	data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'DONE'.encode()
 	while tries < 10:
 		try:
 			senderSocket.sendto(data, receiverAddress)
-			print('Sending DONE', p)
+			verbose_log(f'Sending DONE {p}', verbose)
 			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
-			i = int.from_bytes(receivedData[:1], 'big')
-			print(receivedData[1:].decode() + ' ' + str(i))
-			print('Ending gracefully')
+			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
+			verbose_log(receivedData[PACKET_NUMBER_BYTES:].decode() + ' ' + str(i), verbose)
+			verbose_log(f'Ending gracefully', verbose)
 			return
 		except timeout:
 			tries += 1
-	print('Ending doubtfully')
+	verbose_log(f'Ending doubtfully', verbose)
 
-def send_file(senderSocket, receiverAddress, filepath, p):
+def send_file(senderSocket, receiverAddress, filepath, p, verbose):
 	with open(filepath, 'rb') as file:
 		bytesRead = file.read(SENDER_BUFFER_SIZE)
 		while bytesRead:
-			data = p.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
-			receiverAddress, p = send_data(senderSocket, receiverAddress, data, p)
+			data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'DATA'.encode() + bytesRead
+			receiverAddress, p = send_data(senderSocket, receiverAddress, data, p, verbose)
 			bytesRead = file.read(SENDER_BUFFER_SIZE)
-	send_close(senderSocket, receiverAddress, p)
+	send_close(senderSocket, receiverAddress, p, verbose)
 
 #
 # Receiver role
 #
-def recv_data(receiverSocket):
+def recv_data(receiverSocket, verbose):
+	sleep(0.10)
 	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
-	p = int.from_bytes(data[:1], 'big')
-	print('Received P', p)
-	type = data[1:5].decode()
+	p = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
+	verbose_log(f'Received packet {p}', verbose)
+	type = data[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
 	if (type == 'DONE'):
 		payload = type
 		return (payload, type, p, senderAddress)
-	payload = data[5:]
+	payload = data[PACKET_NUMBER_BYTES+TYPE_BYTES:]
 	if (type == 'DATA'):
 		return (payload, type, p, senderAddress)
 	else:
 		return (payload.decode(), type, p, senderAddress)
 
-def send_ack(receiverSocket, senderAddress, p):
-	receiverSocket.sendto(p.to_bytes(1, 'big') + 'ACK'.encode(), senderAddress)
-	print('Sent ACK', p)
+def send_ack(receiverSocket, senderAddress, p, verbose):
+	receiverSocket.sendto(p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ACKN'.encode(), senderAddress)
+	verbose_log(f'Sent ACK {p}', verbose)
 
-def recv_file(receiverSocket, senderAddress, filepath, type):
+def write_file(filepath, data):
+	with open(filepath, 'ab') as file:
+		file.write(data)
+
+def recv_file(receiverSocket, senderAddress, filepath, verbose):
 	counter = 0
-	with open(filepath, 'wb') as file:
-		while (type != 'DONE'):
-			payload, type, p, senderAddress = recv_data(receiverSocket)
-			send_ack(receiverSocket, senderAddress, p)
-			if (counter < p and type == 'DATA'):
-				file.write(payload)
-				counter += 1
-	print('Done receiving')
+	payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
+	send_ack(receiverSocket, senderAddress, p, verbose)
+	while (type != 'DONE'):
+		if (counter < p and type == 'DATA'):
+			write_file(filepath, payload)
+			counter += 1
+		payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
+		send_ack(receiverSocket, senderAddress, p, verbose)
+	verbose_log(f'Done receiving', verbose)
