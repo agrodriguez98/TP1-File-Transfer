@@ -21,8 +21,9 @@ def verbose_log(message, verbose):
 def send_data(senderSocket, receiverAddress, data, p, verbose):
 	sleep(0.10)
 	senderSocket.sendto(data, receiverAddress)
+	tries = 0
 	verbose_log(f'Sent packet {p}', verbose)
-	while True:
+	while tries < 10:
 		try:
 			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
 			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
@@ -32,9 +33,11 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 			p += 1
 			return (address, p)
 		except timeout:
+			tries += 1
 			verbose_log(f'Timeout ocurred sending packet {p}', verbose)
 			senderSocket.sendto(data, receiverAddress)
 			verbose_log(f'Resending packet {p}', verbose)
+	verbose_log(f'Ending doubtfully', verbose)
 
 def send_close(senderSocket, receiverAddress, p, verbose):
 	tries = 0
