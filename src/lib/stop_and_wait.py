@@ -1,5 +1,4 @@
 from socket import *
-from time import sleep
 
 SENDER_BUFFER_SIZE = 8192
 
@@ -19,7 +18,6 @@ def verbose_log(message, verbose):
 # Sender role
 #
 def send_data(senderSocket, receiverAddress, data, p, verbose):
-	sleep(0.10)
 	senderSocket.sendto(data, receiverAddress)
 	tries = 0
 	verbose_log(f'Sent packet {p}', verbose)
@@ -37,7 +35,7 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 			verbose_log(f'Timeout ocurred sending packet {p}', verbose)
 			senderSocket.sendto(data, receiverAddress)
 			verbose_log(f'Resending packet {p}', verbose)
-	verbose_log(f'Ending doubtfully', verbose)
+	verbose_log(f'Connection dropped unexpectedly', verbose)
 
 def send_close(senderSocket, receiverAddress, p, verbose):
 	tries = 0
@@ -68,7 +66,6 @@ def send_file(senderSocket, receiverAddress, filepath, p, verbose):
 # Receiver role
 #
 def recv_data(receiverSocket, verbose):
-	sleep(0.10)
 	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
 	p = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
 	verbose_log(f'Received packet {p}', verbose)
@@ -101,3 +98,31 @@ def recv_file(receiverSocket, senderAddress, filepath, verbose):
 		payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
 		send_ack(receiverSocket, senderAddress, p, verbose)
 	verbose_log(f'Done receiving', verbose)
+
+def establish_connection(senderSocket, receiverAddress, data, p, verbose):
+	senderSocket.sendto(data, receiverAddress)
+	tries = 0
+	verbose_log(f'Sent initial packet', verbose)
+	while tries < 10:
+		try:
+			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
+			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
+			type = receivedData[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
+			if (type == 'ACKN'):
+				verbose_log(f'Received initial ACK', verbose)
+				# p += 1 # aumentar p o no?
+				return (address, p)
+			if (type == 'ERRO'):
+				payload = receivedData[PACKET_NUMBER_BYTES+TYPE_BYTES:]
+				print(payload.decode())
+				raise Exception("Error when establishing connection")
+		except timeout:
+			tries += 1
+			verbose_log(f'Timeout ocurred sending initial packet', verbose)
+			senderSocket.sendto(data, receiverAddress)
+			verbose_log(f'Resending initial packet', verbose)
+	verbose_log(f'Failed to establish connection', verbose)
+
+def send_error(receiverSocket, senderAddress, p, err_msg, verbose):
+	receiverSocket.sendto((p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ERRO'.encode() + err_msg), senderAddress)
+	verbose_log(f'Sent {err_msg.decode()}', verbose)
