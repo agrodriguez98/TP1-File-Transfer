@@ -16,13 +16,7 @@ p = 0
 type = 'DOWN'
 
 
-# falta cambiar la constanta PACKAGE_NUMBER_BYTES por PACKET_NUMBER_BYTES
-if args.modesr:
-    # Selective repeat
-    data = p.to_bytes(PACKAGE_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
-else:
-    # Stop and wait
-    data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()	
+data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()	
 
 serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p, args.verbose)
 

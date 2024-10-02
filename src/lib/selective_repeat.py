@@ -5,10 +5,9 @@ import random
 random.seed() 
 
 SENDER_BUFFER_SIZE = 8000
-PACKAGE_NUMBER_BYTES = 1 # Quedo del selective repeat
-PACKET_NUMBER_BYTES = 2 # El que usamos ahora en Stop and wait
+PACKET_NUMBER_BYTES = 2
 TYPE_BYTES = 4
-RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKAGE_NUMBER_BYTES + TYPE_BYTES
+RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 WINDOW_SIZE = 10
 
 TIMEOUT = 1
@@ -34,7 +33,7 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number, verbose):
 		array_numeros = [int(b) for b in bool_window]
 		verbose_log(array_numeros, verbose)
 		if seq_number < send_base + WINDOW_SIZE and bytesRead:
-			data = seq_number.to_bytes(1, 'big') + 'DATA'.encode() + bytesRead
+			data = seq_number.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'DATA'.encode() + bytesRead
 		
 			if random.random() > PACKET_LOSS_PERCENTAGE:
 				senderSocket.sendto(data, receiverAddress)
@@ -50,7 +49,7 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number, verbose):
 			except BlockingIOError:
 				receivedData = None
 			while receivedData:
-				seq_number_ack = int.from_bytes(receivedData[:1], 'big')
+				seq_number_ack = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
 				i = 0
 				while i < len(window):
 					if window[i][1] == seq_number_ack:
@@ -82,7 +81,7 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number, verbose):
 			endparse = True
 			verbose_log("FIN PARSEO ARCHIVO", verbose)
 			type = 'DONE'
-			data = seq_number.to_bytes(1, 'big') + type.encode()
+			data = seq_number.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode()
 			if random.random() > PACKET_LOSS_PERCENTAGE:
 				senderSocket.sendto(data, receiverAddress)
 			seq_number+=1
@@ -100,8 +99,8 @@ def recv_file(receiverSocket, senderAddress, filepath, type, seq_number, verbose
 
 	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
 	while True:
-		seq_number = int.from_bytes(data[:1], 'big')
-		type = data[1:5].decode()
+		seq_number = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
+		type = data[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES + TYPE_BYTES].decode()
 		if (type == 'DONE'):
 			
 			verbose_log("DONE", verbose)
@@ -111,7 +110,7 @@ def recv_file(receiverSocket, senderAddress, filepath, type, seq_number, verbose
 			
 			send_ack(receiverSocket, senderAddress, seq_number, verbose)
 		elif(type == 'DATA'):
-			payload = data[5:]
+			payload = data[PACKET_NUMBER_BYTES + TYPE_BYTES:]
 			if seq_number < rcv_base:
 				send_ack(receiverSocket, senderAddress, seq_number, verbose)
 				verbose_log("repeated", verbose)
@@ -149,7 +148,7 @@ def recv_file(receiverSocket, senderAddress, filepath, type, seq_number, verbose
 
 def send_ack(receiverSocket, senderAddress, p, verbose):
 	if random.random() > PACKET_LOSS_PERCENTAGE:
-		receiverSocket.sendto(p.to_bytes(1, 'big') + 'ACK'.encode(), senderAddress)
+		receiverSocket.sendto(p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ACK'.encode(), senderAddress)
 		verbose_log(f'ack sent: {p}', verbose)
 	else:
 		verbose_log(f'ack not sent: {p}', verbose)
@@ -161,8 +160,8 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 	while True:
 		try:
 			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
-			i = int.from_bytes(receivedData[:1], 'big')
-			verbose_log(f'{receivedData[1:].decode()} {str(i)}', verbose)
+			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
+			verbose_log(f'{receivedData[PACKET_NUMBER_BYTES:].decode()} {str(i)}', verbose)
 			p += 1
 			return (address, p)
 		except timeout:
@@ -172,13 +171,13 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 
 def recv_data(receiverSocket, verbose):
 	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
-	p = int.from_bytes(data[:1], 'big')
+	p = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
 	verbose_log(f'Received packet {p}', verbose)
-	type = data[1:5].decode()
+	type = data[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES + TYPE_BYTES].decode()
 	if (type == 'DONE'):
 		payload = type
 		return (payload, type, p, senderAddress)
-	payload = data[5:]
+	payload = data[PACKET_NUMBER_BYTES + TYPE_BYTES:]
 	if (type == 'DATA'):
 		return (payload, type, p, senderAddress)
 	else:
