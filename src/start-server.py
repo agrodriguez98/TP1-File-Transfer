@@ -8,7 +8,7 @@ def handle_connection(filename, type, p, clientAddress):
 	filepath = args.storage + '/' + filename
 	newServerSocket = socket(AF_INET, SOCK_DGRAM)
 	newServerSocket.bind((args.host, 0))
-
+	print("Handling connection")
 	send_ack(newServerSocket, clientAddress, p, args.verbose)
 	if (type == 'DOWN'):
 		newServerSocket.settimeout(SENDER_TIMEOUT)
@@ -16,6 +16,7 @@ def handle_connection(filename, type, p, clientAddress):
 		# Este if está porque sr recibe 0 y sw p+1
 		if args.modesr:
 			# Selective repeat
+			print("HOLAAAA2")
 			send_file(newServerSocket, clientAddress, filepath, 0, args.verbose)
 		else:
 			# Stop and wait
@@ -53,14 +54,12 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 		if (type == 'DOWN'):
 			if not Path(args.storage + '/' + filename).exists():
 				err_msg = f"ERROR: The server storage doesn't contain the file {filename}".encode()
-				send_error(serverSocket, clientAddress, p, err_msg, args.verbose)
+				#end_error(serverSocket, clientAddress, p, err_msg, args.verbose)
 				continue
-
 		elif (type == 'FILE'):
 			if Path(args.storage + '/' + filename).exists():
 				err_msg = f"ERROR: The server storage already contains a file named {filename}".encode()
 				send_error(serverSocket, clientAddress, p, err_msg, args.verbose)
 				continue
-
 
 		pool.submit(handle_connection, filename, type, p, clientAddress)

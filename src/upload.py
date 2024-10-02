@@ -7,6 +7,7 @@ argsparser = get_argparser(App.CLIENT_UPLOAD)
 args = get_args(argsparser, App.CLIENT_UPLOAD)
 
 if args.modesr:
+    print("MODESR ON")
     from lib.selective_repeat import *
 else:
     from lib.stop_and_wait import *
@@ -22,6 +23,7 @@ try:
     serverAddress, p = establish_connection(clientSocket, (args.host, args.port), data, p, args.verbose)
     p+=1
 except:
+    print("FALLÓ")
     clientSocket.close()
     exit(1)  
 

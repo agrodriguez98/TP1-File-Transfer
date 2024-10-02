@@ -62,6 +62,7 @@ def send_close(senderSocket, receiverAddress, p, verbose):
 	verbose_log(f'Ending doubtfully', verbose)
 
 def send_file(senderSocket, receiverAddress, filepath, p, verbose):
+	print("S&W ON")
 	with open(filepath, 'rb') as file:
 		bytesRead = file.read(SENDER_BUFFER_SIZE)
 		while bytesRead:
