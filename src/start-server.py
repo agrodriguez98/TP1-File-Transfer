@@ -29,6 +29,7 @@ def handle_connection(filename, type, p, clientAddress):
 			# Stop and wait
 			recv_file(newServerSocket, clientAddress, filepath, args.verbose)
     
+	newServerSocket.close()
 
 argsparser = get_argparser(App.SERVER)
 args = get_args(argsparser, App.SERVER)
@@ -48,5 +49,17 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 		
 		filename, type, p, clientAddress = recv_data(serverSocket, args.verbose)
 
+		if (type == 'DOWN'):
+			if not Path(args.storage + '/' + filename).exists():
+				err_msg = f"ERROR: The server storage doesn't contain the file {filename}".encode()
+				send_error(serverSocket, clientAddress, p, err_msg, args.verbose)
+				continue
+
+		elif (type == 'FILE'):
+			if Path(args.storage + '/' + filename).exists():
+				err_msg = f"ERROR: The server storage already contains a file named {filename}".encode()
+				send_error(serverSocket, clientAddress, p, err_msg, args.verbose)
+				continue
+		
 
 		pool.submit(handle_connection, filename, type, p, clientAddress)

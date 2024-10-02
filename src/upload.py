@@ -18,7 +18,12 @@ type = 'FILE'
 
 data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
-serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p, args.verbose)
+try:
+    serverAddress, p = establish_connection(clientSocket, (args.host, args.port), data, p, args.verbose)
+    p+=1
+except:
+    clientSocket.close()
+    exit(1)  
 
 send_file(clientSocket, serverAddress, args.src + '/' +  args.name, p, args.verbose)
 

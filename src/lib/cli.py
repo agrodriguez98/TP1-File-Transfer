@@ -9,9 +9,9 @@ STORAGE_DIRPATH = './server_storage'
 SR_MODE = False
 
 FILENAME = 'JWT.png'
-DESTINATION_FILEPATH = 'files/'
+DESTINATION_FILEPATH = './files'
 FILENAME = 'AUTH.png'
-SOURCE_FILEPATH = 'files/'
+SOURCE_FILEPATH = './files'
 
 class App(Enum):
     SERVER = 1

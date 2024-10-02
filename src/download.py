@@ -16,9 +16,13 @@ p = 0
 type = 'DOWN'
 
 
-data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()	
+data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
-serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p, args.verbose)
+try:
+    serverAddress, p = establish_connection(clientSocket, (args.host, args.port), data, p, args.verbose)
+except:
+    clientSocket.close()
+    exit(1)  
 
 if args.modesr:
     # Selective repeat
