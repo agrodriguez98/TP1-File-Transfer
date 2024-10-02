@@ -3,7 +3,6 @@ from cli import *
 import time
 
 start_time = time.time()
-FILENAME = 'cheems.png' # Quedo del selective repeat
 
 argsparser = get_argparser(App.CLIENT_DOWNLOAD)
 args = get_args(argsparser, App.CLIENT_DOWNLOAD)
@@ -16,7 +15,7 @@ type = 'DOWN'
 # data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
 # Selective repeat
-data = p.to_bytes(1, 'big') + type.encode() + FILENAME.encode()
+data = p.to_bytes(PACKAGE_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
 # Stop and wait
 # serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p, args.verbose)
@@ -28,7 +27,7 @@ serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p)
 # recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, args.verbose)
 
 # Selective repeat
-recv_file(clientSocket, serverAddress, args.dst + '/' + FILENAME, type, 0)
+recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, type, 0)
 
 clientSocket.close()
 print("--- %s seconds ---" % (time.time() - start_time))

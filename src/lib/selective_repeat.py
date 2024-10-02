@@ -5,7 +5,8 @@ import random
 random.seed() 
 
 SENDER_BUFFER_SIZE = 1000
-PACKAGE_NUMBER_BYTES = 1
+PACKAGE_NUMBER_BYTES = 1 # Quedo del selective repeat
+PACKET_NUMBER_BYTES = 2 # El que usamos ahora en Stop and wait
 TYPE_BYTES = 4
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKAGE_NUMBER_BYTES + TYPE_BYTES
 WINDOW_SIZE = 10
