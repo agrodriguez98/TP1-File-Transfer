@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from cli import *
+from lib.cli import *
 
 N_THREADS = 10
 

@@ -1,4 +1,4 @@
-from cli import *
+from lib.cli import *
 import time
 
 start_time = time.time()
