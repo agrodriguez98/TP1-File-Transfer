@@ -57,13 +57,15 @@ def get_args(argparser, app):
             argparser.exit(1, message="ERROR: The storage directory path doesn't exist\n")
 
     elif app == App.CLIENT_UPLOAD:
-         if not Path(args.src).exists():
+        if not Path(args.src).exists():
             argparser.exit(1, message="ERROR: The source file path doesn't exist\n")
+        if not Path(args.src + '/' + args.name).exists():
+            argparser.exit(1, message=f"ERROR: The file {args.name} doesn't exist\n")
 
     else:
         if not Path(args.dst).exists():
             argparser.exit(1, message="ERROR: The destination file path doesn't exist\n")
-        if Path(args.dst + args.name).exists():
+        if Path(args.dst + '/' + args.name).exists():
             argparser.exit(1, message=f"ERROR: A file named {args.name} already exists\n")
 
     return args
