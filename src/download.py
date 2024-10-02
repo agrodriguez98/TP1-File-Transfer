@@ -12,6 +12,7 @@ else:
 	from lib.stop_and_wait import *
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
+clientSocket.settimeout(SENDER_TIMEOUT)
 p = 0
 type = 'DOWN'
 
@@ -22,13 +23,14 @@ try:
     serverAddress, p = establish_connection(clientSocket, (args.host, args.port), data, p, args.verbose)
 except:
     clientSocket.close()
-    exit(1)  
+    exit(1)
 
 if args.modesr:
     # Selective repeat
     recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, type, 0, args.verbose)
 else:
     # Stop and wait
+    clientSocket.settimeout(RECEIVER_TIMEOUT)
     recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, args.verbose)
 
 

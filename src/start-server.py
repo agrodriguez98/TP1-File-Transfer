@@ -12,7 +12,7 @@ def handle_connection(filename, type, p, clientAddress):
 	send_ack(newServerSocket, clientAddress, p, args.verbose)
 	if (type == 'DOWN'):
 		newServerSocket.settimeout(SENDER_TIMEOUT)
-		
+
 		# Este if está porque sr recibe 0 y sw p+1
 		if args.modesr:
 			# Selective repeat
@@ -20,15 +20,16 @@ def handle_connection(filename, type, p, clientAddress):
 		else:
 			# Stop and wait
 			send_file(newServerSocket, clientAddress, filepath, p+1, args.verbose)
-    
+
 	elif (type == 'FILE'):
 		if args.modesr:
 			# Selective repeat
 			recv_file(newServerSocket, clientAddress, filepath, type, 1, args.verbose)
 		else:
 			# Stop and wait
+			newServerSocket.settimeout(RECEIVER_TIMEOUT)
 			recv_file(newServerSocket, clientAddress, filepath, args.verbose)
-    
+
 	newServerSocket.close()
 
 argsparser = get_argparser(App.SERVER)
@@ -46,7 +47,7 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 
 	while True:
 		print('Listening for clients')
-		
+
 		filename, type, p, clientAddress = recv_data(serverSocket, args.verbose)
 
 		if (type == 'DOWN'):
@@ -60,6 +61,6 @@ with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
 				err_msg = f"ERROR: The server storage already contains a file named {filename}".encode()
 				send_error(serverSocket, clientAddress, p, err_msg, args.verbose)
 				continue
-		
+
 
 		pool.submit(handle_connection, filename, type, p, clientAddress)
