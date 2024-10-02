@@ -6,6 +6,7 @@ import ipaddress
 SERVICE_HOST = 'localhost'
 SERVICE_PORT = 12000
 STORAGE_DIRPATH = './server_storage'
+SR_MODE = False
 
 FILENAME = 'JWT.png'
 DESTINATION_FILEPATH = 'files/'
@@ -25,6 +26,7 @@ def get_argparser(app):
     group.add_argument("-q", "--quiet", action="store_true", help="decrease output verbosity")
     argparser.add_argument("-H", "--host", action="store", type=str, nargs="?", default=SERVICE_HOST, help="service IP address (default: %(default)s)")
     argparser.add_argument("-p", "--port", action="store", type=int, nargs="?", default=SERVICE_PORT, help="service port (default: %(default)s)")
+    argparser.add_argument("-sr", "--modesr", action="store_true", default=SR_MODE, help="defines if the mode is stop & wait or selective repeat (default: stop & wait)")
 
     if app == App.SERVER:
         argparser.add_argument("-s", "--storage", action="store", type=str, nargs="?", default=STORAGE_DIRPATH, help="storage dir path (default: %(default)s)")
@@ -37,7 +39,7 @@ def get_argparser(app):
     if app == App.CLIENT_DOWNLOAD:
             argparser.add_argument("-d", "--dst", action="store", type=str, nargs="?", default=DESTINATION_FILEPATH, help="destination file path (default: %(default)s)")
 
-    argparser.add_argument("-n", "--name", action="store", type=str, nargs="?", help="file name")
+    argparser.add_argument("-n", "--name", action="store", type=str, nargs="?", help="file name", required=True)
 
     return argparser
 
