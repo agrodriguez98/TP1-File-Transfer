@@ -6,14 +6,14 @@ import bisect
 
 random.seed() 
 
-SENDER_BUFFER_SIZE = 1000
+SENDER_BUFFER_SIZE = 8000
 PACKET_NUMBER_BYTES = 2
 TYPE_BYTES = 4
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 WINDOW_SIZE = 10
 
 TIMEOUT = 0.3
-PACKET_LOSS_PERCENTAGE = 0.1
+PACKET_LOSS_PERCENTAGE = 0
 
 WINDOW_PERCENTAGE = 0.7
 ACK_DELAY = 0.1
@@ -115,6 +115,7 @@ def send_file(senderSocket, receiverAddress, filepath, seq_number, verbose):
 #
 def recv_file(receiverSocket, senderAddress, filepath, type, seq_number, verbose):
 	print("receiving file")
+	time.sleep(0.01)
 	window= [None]*WINDOW_SIZE
 	file = open(filepath, 'wb')
 	rcv_base = seq_number

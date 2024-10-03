@@ -1,5 +1,6 @@
 from socket import *
 from pathlib import Path
+import time
 
 SENDER_BUFFER_SIZE = 8192
 
@@ -11,9 +12,9 @@ RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 
 RECEIVER_TIMEOUT = 10
 
-SENDER_TIMEOUT = 0.09
+SENDER_TIMEOUT = 0.1
 
-SENDER_TRIES = 10
+SENDER_TRIES = 400
 
 def verbose_log(message, verbose):
 	if verbose:
@@ -36,6 +37,7 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 			p += 1
 			return (address, p)
 		except timeout:
+			time.sleep(0.01)
 			tries += 1
 			verbose_log(f'Timeout ocurred sending packet {p}', verbose)
 			senderSocket.sendto(data, receiverAddress)
