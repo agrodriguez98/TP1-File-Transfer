@@ -11,9 +11,9 @@ RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 
 RECEIVER_TIMEOUT = 10
 
-SENDER_TIMEOUT = 0.09
+SENDER_TIMEOUT = 0.25
 
-SENDER_TRIES = 10
+SENDER_TRIES = 400
 
 def verbose_log(message, verbose):
 	if verbose:
@@ -129,7 +129,6 @@ def establish_connection(senderSocket, receiverAddress, data, p, verbose):
 			type = receivedData[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
 			if (type == 'ACKN'):
 				verbose_log(f'Received initial ACK', verbose)
-				# p += 1 # aumentar p o no?
 				return (address, p)
 			if (type == 'ERRO'):
 				payload = receivedData[PACKET_NUMBER_BYTES+TYPE_BYTES:]
