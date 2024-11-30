@@ -1,5 +1,5 @@
 from socket import *
-from time import sleep
+from pathlib import Path
 
 SENDER_BUFFER_SIZE = 8192
 
@@ -9,7 +9,11 @@ TYPE_BYTES = 4
 
 RECEIVER_BUFFER_SIZE = SENDER_BUFFER_SIZE + PACKET_NUMBER_BYTES + TYPE_BYTES
 
+RECEIVER_TIMEOUT = 10
+
 SENDER_TIMEOUT = 0.09
+
+SENDER_TRIES = 10
 
 def verbose_log(message, verbose):
 	if verbose:
@@ -19,11 +23,10 @@ def verbose_log(message, verbose):
 # Sender role
 #
 def send_data(senderSocket, receiverAddress, data, p, verbose):
-	sleep(0.10)
 	senderSocket.sendto(data, receiverAddress)
 	tries = 0
 	verbose_log(f'Sent packet {p}', verbose)
-	while tries < 10:
+	while tries < SENDER_TRIES:
 		try:
 			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
 			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
@@ -37,7 +40,10 @@ def send_data(senderSocket, receiverAddress, data, p, verbose):
 			verbose_log(f'Timeout ocurred sending packet {p}', verbose)
 			senderSocket.sendto(data, receiverAddress)
 			verbose_log(f'Resending packet {p}', verbose)
-	verbose_log(f'Ending doubtfully', verbose)
+	verbose_log(f'Connection dropped unexpectedly', verbose)
+	verbose_log(f'Attempted to send data {SENDER_TRIES} times and got no answer', verbose)
+	senderSocket.close()
+	exit(1)
 
 def send_close(senderSocket, receiverAddress, p, verbose):
 	tries = 0
@@ -68,19 +74,22 @@ def send_file(senderSocket, receiverAddress, filepath, p, verbose):
 # Receiver role
 #
 def recv_data(receiverSocket, verbose):
-	sleep(0.10)
-	data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
-	p = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
-	verbose_log(f'Received packet {p}', verbose)
-	type = data[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
-	if (type == 'DONE'):
-		payload = type
-		return (payload, type, p, senderAddress)
-	payload = data[PACKET_NUMBER_BYTES+TYPE_BYTES:]
-	if (type == 'DATA'):
-		return (payload, type, p, senderAddress)
-	else:
-		return (payload.decode(), type, p, senderAddress)
+	try:
+		data, senderAddress = receiverSocket.recvfrom(RECEIVER_BUFFER_SIZE)
+		p = int.from_bytes(data[:PACKET_NUMBER_BYTES], 'big')
+		verbose_log(f'Received packet {p}', verbose)
+		type = data[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
+		if (type == 'DONE'):
+			payload = type
+			return (payload, type, p, senderAddress)
+		payload = data[PACKET_NUMBER_BYTES+TYPE_BYTES:]
+		if (type == 'DATA'):
+			return (payload, type, p, senderAddress)
+		else:
+			return (payload.decode(), type, p, senderAddress)
+	except timeout:
+		verbose_log(f'Connection dropped unexpectedly', verbose)
+		raise Exception("Connection dropped unexpectedly")
 
 def send_ack(receiverSocket, senderAddress, p, verbose):
 	receiverSocket.sendto(p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ACKN'.encode(), senderAddress)
@@ -91,13 +100,47 @@ def write_file(filepath, data):
 		file.write(data)
 
 def recv_file(receiverSocket, senderAddress, filepath, verbose):
-	counter = 0
-	payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
-	send_ack(receiverSocket, senderAddress, p, verbose)
-	while (type != 'DONE'):
-		if (counter < p and type == 'DATA'):
-			write_file(filepath, payload)
-			counter += 1
+	try:
+		counter = 0
 		payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
 		send_ack(receiverSocket, senderAddress, p, verbose)
-	verbose_log(f'Done receiving', verbose)
+		while (type != 'DONE'):
+			if (counter < p and type == 'DATA'):
+				write_file(filepath, payload)
+				counter += 1
+			payload, type, p, senderAddress = recv_data(receiverSocket, verbose)
+			send_ack(receiverSocket, senderAddress, p, verbose)
+		verbose_log(f'Done receiving', verbose)
+	except:
+		receiverSocket.close()
+		if Path(filepath).exists():
+			Path(filepath).unlink()
+		exit(1)
+
+def establish_connection(senderSocket, receiverAddress, data, p, verbose):
+	senderSocket.sendto(data, receiverAddress)
+	tries = 0
+	verbose_log(f'Sent initial packet', verbose)
+	while tries < 10:
+		try:
+			receivedData, address = senderSocket.recvfrom(SENDER_BUFFER_SIZE)
+			i = int.from_bytes(receivedData[:PACKET_NUMBER_BYTES], 'big')
+			type = receivedData[PACKET_NUMBER_BYTES:PACKET_NUMBER_BYTES+TYPE_BYTES].decode()
+			if (type == 'ACKN'):
+				verbose_log(f'Received initial ACK', verbose)
+				# p += 1 # aumentar p o no?
+				return (address, p)
+			if (type == 'ERRO'):
+				payload = receivedData[PACKET_NUMBER_BYTES+TYPE_BYTES:]
+				print(payload.decode())
+				raise Exception("Error when establishing connection")
+		except timeout:
+			tries += 1
+			verbose_log(f'Timeout ocurred sending initial packet', verbose)
+			senderSocket.sendto(data, receiverAddress)
+			verbose_log(f'Resending initial packet', verbose)
+	verbose_log(f'Failed to establish connection', verbose)
+
+def send_error(receiverSocket, senderAddress, p, err_msg, verbose):
+	receiverSocket.sendto((p.to_bytes(PACKET_NUMBER_BYTES, 'big') + 'ERRO'.encode() + err_msg), senderAddress)
+	verbose_log(f'Sent {err_msg.decode()}', verbose)

@@ -1,5 +1,4 @@
-from lib.selective_repeat import *
-from cli import *
+from lib.cli import *
 import time
 
 start_time = time.time()
@@ -7,27 +6,33 @@ start_time = time.time()
 argsparser = get_argparser(App.CLIENT_DOWNLOAD)
 args = get_args(argsparser, App.CLIENT_DOWNLOAD)
 
+if args.modesr:
+	from lib.selective_repeat import *
+else:
+	from lib.stop_and_wait import *
+
 clientSocket = socket(AF_INET, SOCK_DGRAM)
+clientSocket.settimeout(SENDER_TIMEOUT)
 p = 0
 type = 'DOWN'
 
-# Stop and wait
-# data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
-# Selective repeat
-data = p.to_bytes(PACKAGE_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
+data = p.to_bytes(PACKET_NUMBER_BYTES, 'big') + type.encode() + args.name.encode()
 
-# Stop and wait
-# serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p, args.verbose)
+try:
+    serverAddress, p = establish_connection(clientSocket, (args.host, args.port), data, p, args.verbose)
+except:
+    clientSocket.close()
+    exit(1)
 
-# Selective repeat
-serverAddress, p = send_data(clientSocket, (args.host, args.port), data, p)
+if args.modesr:
+    # Selective repeat
+    recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, type, 0, args.verbose)
+else:
+    # Stop and wait
+    clientSocket.settimeout(RECEIVER_TIMEOUT)
+    recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, args.verbose)
 
-# Stop and wait
-# recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, args.verbose)
-
-# Selective repeat
-recv_file(clientSocket, serverAddress, args.dst + '/' + args.name, type, 0)
 
 clientSocket.close()
 print("--- %s seconds ---" % (time.time() - start_time))
